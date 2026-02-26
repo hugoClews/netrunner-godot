@@ -2,30 +2,26 @@ extends Node3D
 ## City Generator - Creates a suburban neighborhood with Kenney house models
 
 const BUILDING_SCALE := 2.5
-const MODELS_PATH := "res://assets/models/"
 
-var building_types := [
-	"building-type-a", "building-type-b", "building-type-c", "building-type-d",
-	"building-type-e", "building-type-f", "building-type-g", "building-type-h",
-	"building-type-i", "building-type-j", "building-type-k", "building-type-l"
-]
+# Preload all building scenes at compile time for web export compatibility
+var building_scenes := {
+	"a": preload("res://assets/models/building-type-a.glb"),
+	"b": preload("res://assets/models/building-type-b.glb"),
+	"c": preload("res://assets/models/building-type-c.glb"),
+	"d": preload("res://assets/models/building-type-d.glb"),
+	"e": preload("res://assets/models/building-type-e.glb"),
+	"f": preload("res://assets/models/building-type-f.glb"),
+	"g": preload("res://assets/models/building-type-g.glb"),
+	"h": preload("res://assets/models/building-type-h.glb"),
+}
 
-var loaded_buildings := {}
+var tree_scene = preload("res://assets/models/tree-large.glb")
+
+var building_keys := ["a", "b", "c", "d", "e", "f", "g", "h"]
 
 func _ready() -> void:
 	add_to_group("city")
-	preload_buildings()
 	generate_city()
-
-func preload_buildings() -> void:
-	for building_type in building_types:
-		var path := MODELS_PATH + building_type + ".glb"
-		var scene = load(path)
-		if scene:
-			loaded_buildings[building_type] = scene
-			print("Loaded: ", building_type)
-		else:
-			print("Failed to load: ", path)
 
 func generate_city() -> void:
 	create_ground()
@@ -108,22 +104,22 @@ func create_houses() -> void:
 	
 	var i := 0
 	for data in positions:
-		var building_type = building_types[i % building_types.size()]
-		create_house(data.pos, data.rot, building_type)
+		var key = building_keys[i % building_keys.size()]
+		create_house(data.pos, data.rot, key)
 		i += 1
 
-func create_house(pos: Vector3, rot_y: float, building_type: String) -> void:
-	if not loaded_buildings.has(building_type):
-		print("Building type not loaded: ", building_type)
+func create_house(pos: Vector3, rot_y: float, building_key: String) -> void:
+	if not building_scenes.has(building_key):
+		print("Building type not found: ", building_key)
 		return
 	
 	var house := Node3D.new()
-	house.name = "House_" + building_type
+	house.name = "House_" + building_key
 	house.position = pos
 	house.rotation.y = rot_y
 	
 	# Instance the GLB model
-	var model: Node3D = loaded_buildings[building_type].instantiate()
+	var model: Node3D = building_scenes[building_key].instantiate()
 	model.scale = Vector3(BUILDING_SCALE, BUILDING_SCALE, BUILDING_SCALE)
 	house.add_child(model)
 	
@@ -177,15 +173,12 @@ func create_trees() -> void:
 		create_tree(pos)
 
 func create_tree(pos: Vector3) -> void:
-	# Try to load tree model
-	var tree_scene = load(MODELS_PATH + "tree-large.glb")
 	if tree_scene:
 		var tree: Node3D = tree_scene.instantiate()
 		tree.position = pos
 		tree.scale = Vector3(3, 3, 3)
 		add_child(tree)
 	else:
-		# Fallback to procedural tree
 		create_simple_tree(pos)
 
 func create_simple_tree(pos: Vector3) -> void:
