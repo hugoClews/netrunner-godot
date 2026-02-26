@@ -135,7 +135,7 @@ func create_building_with_interior(pos: Vector3) -> void:
 	floor_body.add_child(floor_col)
 	building.add_child(floor_body)
 	
-	# Walls (no roof!)
+	# Walls
 	# Back wall
 	create_wall_segment(building, Vector3(0, wall_height/2, -room_depth/2 + wall_thickness/2), 
 		Vector3(room_width, wall_height, wall_thickness), exterior_mat)
@@ -184,6 +184,9 @@ func create_building_with_interior(pos: Vector3) -> void:
 	# Add interior furniture
 	add_interior_furniture(building, room_width, room_depth)
 	
+	# Add pitched roof (house-style)
+	add_pitched_roof(building, room_width, room_depth, wall_height)
+	
 	# Add door interaction area
 	add_door_area(building, Vector3(0, 0, room_depth/2 + 1))
 	
@@ -206,6 +209,66 @@ func create_wall_segment(parent: Node3D, pos: Vector3, size: Vector3, mat: Stand
 	body.position = pos
 	body.add_child(col)
 	parent.add_child(body)
+
+func add_pitched_roof(parent: Node3D, width: float, depth: float, wall_height: float) -> void:
+	var roof_height := 2.5
+	var overhang := 0.8
+	
+	var roof_mat := StandardMaterial3D.new()
+	roof_mat.albedo_color = Color(0.45, 0.25, 0.2)  # Brown/terracotta roof
+	
+	# Create roof using two angled planes (prism shape)
+	var roof := Node3D.new()
+	roof.position.y = wall_height
+	
+	# Calculate roof panel dimensions
+	var panel_width := sqrt(pow(width/2 + overhang, 2) + pow(roof_height, 2))
+	var roof_angle := atan2(roof_height, width/2 + overhang)
+	
+	# Left roof panel
+	var left_panel := MeshInstance3D.new()
+	var left_mesh := BoxMesh.new()
+	left_mesh.size = Vector3(panel_width, 0.15, depth + overhang * 2)
+	left_panel.mesh = left_mesh
+	left_panel.rotation.z = roof_angle
+	left_panel.position = Vector3(-width/4 - overhang/4, roof_height/2, 0)
+	left_panel.material_override = roof_mat
+	roof.add_child(left_panel)
+	
+	# Right roof panel
+	var right_panel := MeshInstance3D.new()
+	right_panel.mesh = left_mesh
+	right_panel.rotation.z = -roof_angle
+	right_panel.position = Vector3(width/4 + overhang/4, roof_height/2, 0)
+	right_panel.material_override = roof_mat
+	roof.add_child(right_panel)
+	
+	# Gable ends (triangular pieces at front and back)
+	var gable_mat := StandardMaterial3D.new()
+	gable_mat.albedo_color = Color(0.75, 0.7, 0.65)
+	
+	# Front gable
+	create_gable(roof, Vector3(0, 0, depth/2 + 0.1), width, roof_height, gable_mat)
+	
+	# Back gable
+	create_gable(roof, Vector3(0, 0, -depth/2 - 0.1), width, roof_height, gable_mat)
+	
+	parent.add_child(roof)
+
+func create_gable(parent: Node3D, pos: Vector3, width: float, height: float, mat: StandardMaterial3D) -> void:
+	# Approximate triangle with stacked boxes (Godot doesn't have built-in triangle mesh)
+	var steps := 8
+	for i in range(steps):
+		var step_height := height / steps
+		var step_width := width * (1.0 - float(i) / steps)
+		
+		var block := MeshInstance3D.new()
+		var block_mesh := BoxMesh.new()
+		block_mesh.size = Vector3(step_width, step_height, 0.2)
+		block.mesh = block_mesh
+		block.position = pos + Vector3(0, step_height * i + step_height/2, 0)
+		block.material_override = mat
+		parent.add_child(block)
 
 func add_interior_furniture(building: Node3D, room_w: float, room_d: float) -> void:
 	# Desk in corner
