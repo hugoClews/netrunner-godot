@@ -1,5 +1,5 @@
 extends CharacterBody3D
-## Third-person player controller with animated character
+## Third-person player controller
 
 const SPEED := 8.0
 const SPRINT_SPEED := 14.0
@@ -11,16 +11,11 @@ var is_sprinting := false
 
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var collision: CollisionShape3D = $CollisionShape3D
-@onready var character_model: Node3D = null
-@onready var animation_player: AnimationPlayer = null
-
-# Character model path
-const CHARACTER_PATH := "res://assets/characters/characterMedium.fbx"
-const CHARACTER_SKIN := "res://assets/characters/cyborgFemaleA.png"
+var character_mesh: Node3D = null
 
 func _ready() -> void:
 	setup_collision()
-	setup_character()
+	create_character()
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func setup_collision() -> void:
@@ -29,52 +24,85 @@ func setup_collision() -> void:
 	shape.height = 1.8
 	collision.shape = shape
 
-func setup_character() -> void:
-	# Try to load the character model
-	var char_scene := load(CHARACTER_PATH) as PackedScene
-	if char_scene:
-		character_model = char_scene.instantiate()
-		character_model.scale = Vector3(0.01, 0.01, 0.01)  # FBX models are usually huge
-		character_model.position.y = -0.9  # Offset to ground
-		add_child(character_model)
-		
-		# Find animation player if exists
-		animation_player = character_model.get_node_or_null("AnimationPlayer")
-		
-		# Try to apply skin texture
-		apply_skin()
-		
-		print("Character model loaded!")
-	else:
-		# Fallback to capsule
-		print("Character model not found, using capsule")
-		create_fallback_mesh()
-
-func apply_skin() -> void:
-	var skin_tex := load(CHARACTER_SKIN) as Texture2D
-	if skin_tex and character_model:
-		# Apply texture to all mesh instances
-		for child in character_model.get_children():
-			if child is MeshInstance3D:
-				var mat := StandardMaterial3D.new()
-				mat.albedo_texture = skin_tex
-				child.material_override = mat
-
-func create_fallback_mesh() -> void:
-	var mesh_instance := MeshInstance3D.new()
-	mesh_instance.name = "FallbackMesh"
+func create_character() -> void:
+	# Create a simple humanoid character from primitives
+	character_mesh = Node3D.new()
+	character_mesh.name = "CharacterMesh"
 	
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.4
-	capsule.height = 1.8
-	mesh_instance.mesh = capsule
-	mesh_instance.position.y = 0.9
+	var body_mat := StandardMaterial3D.new()
+	body_mat.albedo_color = Color(0.2, 0.5, 0.8)  # Blue body
 	
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.2, 0.6, 0.9)
-	mesh_instance.material_override = material
+	var skin_mat := StandardMaterial3D.new()
+	skin_mat.albedo_color = Color(0.9, 0.75, 0.65)  # Skin tone
 	
-	add_child(mesh_instance)
+	var hair_mat := StandardMaterial3D.new()
+	hair_mat.albedo_color = Color(0.15, 0.1, 0.05)  # Dark hair
+	
+	# Body (torso)
+	var torso := MeshInstance3D.new()
+	var torso_mesh := CapsuleMesh.new()
+	torso_mesh.radius = 0.25
+	torso_mesh.height = 0.7
+	torso.mesh = torso_mesh
+	torso.material_override = body_mat
+	torso.position = Vector3(0, 1.1, 0)
+	character_mesh.add_child(torso)
+	
+	# Head
+	var head := MeshInstance3D.new()
+	var head_mesh := SphereMesh.new()
+	head_mesh.radius = 0.18
+	head_mesh.height = 0.36
+	head.mesh = head_mesh
+	head.material_override = skin_mat
+	head.position = Vector3(0, 1.65, 0)
+	character_mesh.add_child(head)
+	
+	# Hair
+	var hair := MeshInstance3D.new()
+	var hair_mesh := SphereMesh.new()
+	hair_mesh.radius = 0.19
+	hair_mesh.height = 0.2
+	hair.mesh = hair_mesh
+	hair.material_override = hair_mat
+	hair.position = Vector3(0, 1.75, 0)
+	character_mesh.add_child(hair)
+	
+	# Left arm
+	var left_arm := MeshInstance3D.new()
+	var arm_mesh := CapsuleMesh.new()
+	arm_mesh.radius = 0.08
+	arm_mesh.height = 0.5
+	left_arm.mesh = arm_mesh
+	left_arm.material_override = body_mat
+	left_arm.position = Vector3(-0.35, 1.1, 0)
+	character_mesh.add_child(left_arm)
+	
+	# Right arm
+	var right_arm := MeshInstance3D.new()
+	right_arm.mesh = arm_mesh
+	right_arm.material_override = body_mat
+	right_arm.position = Vector3(0.35, 1.1, 0)
+	character_mesh.add_child(right_arm)
+	
+	# Left leg
+	var left_leg := MeshInstance3D.new()
+	var leg_mesh := CapsuleMesh.new()
+	leg_mesh.radius = 0.1
+	leg_mesh.height = 0.7
+	left_leg.mesh = leg_mesh
+	left_leg.material_override = body_mat
+	left_leg.position = Vector3(-0.15, 0.4, 0)
+	character_mesh.add_child(left_leg)
+	
+	# Right leg
+	var right_leg := MeshInstance3D.new()
+	right_leg.mesh = leg_mesh
+	right_leg.material_override = body_mat
+	right_leg.position = Vector3(0.15, 0.4, 0)
+	character_mesh.add_child(right_leg)
+	
+	add_child(character_mesh)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -113,9 +141,9 @@ func _physics_process(delta: float) -> void:
 		velocity.z = direction.z * current_speed
 		
 		# Rotate character to face movement direction
-		if character_model:
+		if character_mesh:
 			var target_angle := atan2(-direction.x, -direction.z)
-			character_model.rotation.y = lerp_angle(character_model.rotation.y, target_angle, 0.15)
+			character_mesh.rotation.y = lerp_angle(character_mesh.rotation.y, target_angle, 0.15)
 	else:
 		velocity.x = move_toward(velocity.x, 0, current_speed)
 		velocity.z = move_toward(velocity.z, 0, current_speed)
