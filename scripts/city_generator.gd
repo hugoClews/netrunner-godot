@@ -27,6 +27,7 @@ var building_types := [
 var prop_types := ["planter", "fence", "fence-low", "tree-large", "tree-small"]
 
 func _ready() -> void:
+	add_to_group("city")
 	generate_city()
 
 func generate_city() -> void:
@@ -134,8 +135,59 @@ func place_building_in_block(center: Vector3) -> void:
 	
 	add_child(building)
 	
+	# Add door for entry
+	add_door(building)
+	
 	# Add driveway
 	add_driveway(building.position, building.rotation.y)
+
+func add_door(building: Node3D) -> void:
+	# Create door trigger area
+	var door := Area3D.new()
+	door.name = "Door"
+	door.add_to_group("doors")
+	
+	# Door collision shape
+	var col := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(2, 3, 1)
+	col.shape = shape
+	door.add_child(col)
+	
+	# Door visual (simple rectangle)
+	var door_mesh := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(1.5, 2.5, 0.15)
+	door_mesh.mesh = mesh
+	door_mesh.position.y = 1.25
+	
+	var door_mat := StandardMaterial3D.new()
+	door_mat.albedo_color = Color(0.4, 0.25, 0.15)
+	door_mesh.material_override = door_mat
+	door.add_child(door_mesh)
+	
+	# Door frame
+	var frame_mat := StandardMaterial3D.new()
+	frame_mat.albedo_color = Color(0.3, 0.3, 0.3)
+	
+	# Frame pieces
+	for frame_pos in [Vector3(-0.85, 1.25, 0), Vector3(0.85, 1.25, 0), Vector3(0, 2.6, 0)]:
+		var frame := MeshInstance3D.new()
+		var frame_mesh := BoxMesh.new()
+		if frame_pos.y > 2:
+			frame_mesh.size = Vector3(1.9, 0.2, 0.2)
+		else:
+			frame_mesh.size = Vector3(0.2, 2.5, 0.2)
+		frame.mesh = frame_mesh
+		frame.position = frame_pos
+		frame.material_override = frame_mat
+		door.add_child(frame)
+	
+	# Position door at front of building
+	door.position = Vector3(0, 0, 6)  # Front offset
+	door.position.y = 1.5
+	
+	building.add_child(door)
 
 func add_driveway(pos: Vector3, rotation: float) -> void:
 	var driveway_path := MODELS_PATH + "driveway-short.glb"
