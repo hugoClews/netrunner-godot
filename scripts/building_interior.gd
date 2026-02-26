@@ -32,14 +32,7 @@ func create_interior() -> void:
 	floor_body.add_child(floor_col)
 	add_child(floor_body)
 	
-	# Ceiling
-	var ceiling := MeshInstance3D.new()
-	ceiling.mesh = floor_box
-	ceiling.position.y = room_size.y
-	var ceiling_mat := StandardMaterial3D.new()
-	ceiling_mat.albedo_color = Color(0.9, 0.9, 0.85)
-	ceiling.material_override = ceiling_mat
-	add_child(ceiling)
+	# No ceiling - allows viewing interior from above
 	
 	# Walls
 	create_walls()
