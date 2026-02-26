@@ -122,7 +122,8 @@ func _input(event: InputEvent) -> void:
 	# Interact with door
 	if event.is_action_pressed("interact"):
 		if nearby_door and not is_inside:
-			enter_building(nearby_door.get_parent())
+			var building = nearby_door.get_meta("building") if nearby_door.has_meta("building") else nearby_door.get_parent()
+			enter_building(building)
 		elif is_inside:
 			exit_building()
 

@@ -142,7 +142,7 @@ func place_building_in_block(center: Vector3) -> void:
 	add_driveway(building.position, building.rotation.y)
 
 func add_door(building: Node3D) -> void:
-	# Create door trigger area
+	# Create door as sibling (not child) to avoid scale issues
 	var door := Area3D.new()
 	door.name = "Door"
 	door.add_to_group("doors")
@@ -150,44 +150,53 @@ func add_door(building: Node3D) -> void:
 	# Door collision shape
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(2, 3, 1)
+	shape.size = Vector3(2, 3, 2)
 	col.shape = shape
+	col.position.y = 1.5
 	door.add_child(col)
 	
 	# Door visual (simple rectangle)
 	var door_mesh := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
-	mesh.size = Vector3(1.5, 2.5, 0.15)
+	mesh.size = Vector3(1.5, 2.8, 0.2)
 	door_mesh.mesh = mesh
-	door_mesh.position.y = 1.25
+	door_mesh.position.y = 1.4
 	
 	var door_mat := StandardMaterial3D.new()
-	door_mat.albedo_color = Color(0.4, 0.25, 0.15)
+	door_mat.albedo_color = Color(0.5, 0.3, 0.15)
 	door_mesh.material_override = door_mat
 	door.add_child(door_mesh)
 	
 	# Door frame
 	var frame_mat := StandardMaterial3D.new()
-	frame_mat.albedo_color = Color(0.3, 0.3, 0.3)
+	frame_mat.albedo_color = Color(0.25, 0.25, 0.25)
 	
 	# Frame pieces
-	for frame_pos in [Vector3(-0.85, 1.25, 0), Vector3(0.85, 1.25, 0), Vector3(0, 2.6, 0)]:
+	var frame_positions := [
+		{"pos": Vector3(-0.9, 1.4, 0), "size": Vector3(0.2, 2.8, 0.25)},
+		{"pos": Vector3(0.9, 1.4, 0), "size": Vector3(0.2, 2.8, 0.25)},
+		{"pos": Vector3(0, 2.9, 0), "size": Vector3(2.0, 0.2, 0.25)}
+	]
+	for fp in frame_positions:
 		var frame := MeshInstance3D.new()
 		var frame_mesh := BoxMesh.new()
-		if frame_pos.y > 2:
-			frame_mesh.size = Vector3(1.9, 0.2, 0.2)
-		else:
-			frame_mesh.size = Vector3(0.2, 2.5, 0.2)
+		frame_mesh.size = fp["size"]
 		frame.mesh = frame_mesh
-		frame.position = frame_pos
+		frame.position = fp["pos"]
 		frame.material_override = frame_mat
 		door.add_child(frame)
 	
-	# Position door at front of building
-	door.position = Vector3(0, 0, 6)  # Front offset
-	door.position.y = 1.5
+	# Position door at front of building (world coordinates)
+	# Building rotation affects which side is "front"
+	var front_offset := Vector3(0, 0, 8).rotated(Vector3.UP, building.rotation.y)
+	door.position = building.position + front_offset
+	door.rotation.y = building.rotation.y
 	
-	building.add_child(door)
+	# Store reference to building
+	door.set_meta("building", building)
+	
+	# Add to city (same parent as building)
+	add_child(door)
 
 func add_driveway(pos: Vector3, rotation: float) -> void:
 	var driveway_path := MODELS_PATH + "driveway-short.glb"
